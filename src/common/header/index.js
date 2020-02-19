@@ -21,16 +21,30 @@ import {
 class Header extends Component {
 
 	getListArea() {
-		const { focused, list }  = this.props;
-		if (focused) {
+		const { focused, mouseIn, list, page, totalPage, handleMouseEnter, handleMouseLeave, handleChangePage }  = this.props;
+		if (focused || mouseIn) {
+
+			let pageList = [], newList = list.toJS();
+			if (newList.length) {
+				for(let i = (page - 1) * 10; i < page * 10; i++) {
+					if (i == newList.length - 1) {
+						break;
+					}
+					pageList.push(<SearchInfoItem key={newList[i]}>{newList[i]}</SearchInfoItem>)
+				}
+			}
+
 			return (
-				<SearchInfo>
+				<SearchInfo onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+					<i className="cor"></i>
 					<SearchInfoTitle>
 						搜索
-						<SearchInfoSwitch>换一批</SearchInfoSwitch>
+						<SearchInfoSwitch onClick={() => handleChangePage(page, totalPage, this.spin)}>
+							<i ref={icon => this.spin = icon} className="iconfont spin">&#xe600;</i>换一批
+						</SearchInfoSwitch>
 					</SearchInfoTitle>
 					<SearchInfoList>
-						{ list.map(item => <SearchInfoItem key={item}>{item}</SearchInfoItem>) }
+						{ pageList }
 					</SearchInfoList>
 				</SearchInfo>
 			)
@@ -40,7 +54,7 @@ class Header extends Component {
 	}
 
 	render () {
-		const {focused, handleInputFocus, handleInputBlur } = this.props;
+		const {focused, list, handleInputFocus, handleInputBlur } = this.props;
 		return (
 			<HeaderWrapper>
 				<Logo />
@@ -59,11 +73,11 @@ class Header extends Component {
 						>
 							<NavSearch
 								className={focused ? 'focused' : ''}
-								onFocus={handleInputFocus}
+								onFocus={() => handleInputFocus(list)}
 								onBlur={handleInputBlur}
 							/>
 						</CSSTransition>
-						<i className={focused ? 'focused iconfont' : 'iconfont'}>&#xe6dd;</i>
+						<i className={focused ? 'focused iconfont zoom' : 'iconfont zoom'}>&#xe6dd;</i>
 						{this.getListArea()}
 					</SearchWrapper>
 				</Nav>
@@ -80,18 +94,35 @@ const mapStateToProps = (state) => {
 	return {
 		focused: state.getIn(['header','focused']),
 		list: state.getIn(['header', 'list']),
+		mouseIn: state.getIn(['header', 'mouseIn']),
+		page: state.getIn(['header', 'page']), 
+		totalPage: state.getIn(['header', 'totalPage']),
 	}
 };
 
 const mapDispatchToProps = (dispatch) => {
 	return {
-		handleInputFocus() {
-			dispatch(actionCreators.getList());
+		handleInputFocus(list) {
+			(list.size === 0) && dispatch(actionCreators.getList());
 			dispatch(actionCreators.searchFocus())
 		},
 		handleInputBlur() {
 			dispatch(actionCreators.searchBlur())
 		},
+		handleMouseEnter() {
+			dispatch(actionCreators.mouseEnter())
+		},
+		handleMouseLeave() {
+			dispatch(actionCreators.mouseLeave())
+		},
+		handleChangePage(page, totalPage, spin) {
+			let originAngle = spin.style.transform.replace(/[^0-9]/ig, '');
+			// 如果不存在时，设置0
+			originAngle = originAngle ? parseInt(originAngle, 10) : 0;
+			spin.style.transform = 'rotate(' + (originAngle + 360) + 'deg)';
+			const nextPage = page < totalPage ? page + 1 : 1;
+			dispatch(actionCreators.changePage(nextPage));
+		}
 	}
 };
 
